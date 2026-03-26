@@ -1,0 +1,7 @@
+*.zip
+*.tar
+neuro_net_46_lstm_bidirect.py
+neuro_net_19.py
+archive/dataset/
+pipeline.ipynb
+predproccesing.ipynb
