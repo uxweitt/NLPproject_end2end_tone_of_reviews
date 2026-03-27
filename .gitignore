@@ -1,7 +1,11 @@
 *.zip
-*.tar
 neuro_net_46_lstm_bidirect.py
 neuro_net_19.py
 archive/dataset/
 pipeline.ipynb
 predproccesing.ipynb
+dev
+final/.pytest_cache
+final/ml/__pycache__
+final/app/__pycache__
+final/tests/__pycache__
