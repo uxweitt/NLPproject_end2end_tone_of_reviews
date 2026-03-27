@@ -15,6 +15,22 @@ from tqdm import tqdm
 from torch.nn.utils.rnn import pad_sequence
 from nltk.corpus import stopwords
 
+class Inference:
+    def __init__(self, path_navec, path_model, model):
+        self.navec = Navec.load(path_navec)
+        self.model = model
+        self.model.load_state_dict(torch.load(path_model))
+
+    def predict(self, text):
+        words = text.lower().split()
+        words = [torch.tensor(navec[w]) for w in words if w in navec]
+        _data = torch.stack(words)
+        model.eval()
+        with torch.no_grad():
+            p = self.model(_data.unsqueeze(0).cuda()).squeeze(0)
+            p = torch.argmax(p, dim=1)
+        return p
+    
 class ReviewModel(nn.Module):
     def __init__(self, in_features, out_features):
         super().__init__()
@@ -73,7 +89,6 @@ class ReviewDataset(data.Dataset):
             clean_text = emoji.demojize(text, delimiters=(" ", " "))
             clean_text = clean_text.replace(":", "").replace("_", " ")
             return clean_text
-        
         clean_text = re.sub('<[^<]+?>', '', input_text) # Удаление HTML тегов
         clean_text = re.sub(r'http\S+', '', clean_text) # Удаление URL и ссылок
         clean_text = emojis_words(clean_text)           # Обрабатываем эмодзи
@@ -89,9 +104,8 @@ class ReviewDataset(data.Dataset):
                 words.append(temp.number_to_words(word))
             else:
                 words.append(word)
+
         clean_text = ' '.join(words)
-        
-        
         stop_words = set(stopwords.words('russian'))
         _words = clean_text.split()
         _words = [token for token in _words if token not in stop_words]
@@ -109,7 +123,6 @@ def collate_fn(data):
 
 path = 'navec_hudlit_v1_12B_500K_300d_100q.tar'
 navec = Navec.load(path)
-
 rd = ReviewDataset('archive/dataset', navec_embedded=navec)
 
 train_d, test_d = data.random_split(rd, [0.8, 0.2])
@@ -122,7 +135,7 @@ model.cuda()
 optimizer = optim.Adam(params=model.parameters(), lr=0.001, weight_decay=0.001)
 loss_func = nn.CrossEntropyLoss()
 
-epochs = 52
+epochs = 0
 for _e in range(epochs):
     loss_mean = 0
     lm_count = 0
@@ -140,8 +153,11 @@ for _e in range(epochs):
         lm_count += 1
         loss_mean = 1/lm_count * loss.item() + (1 - 1/lm_count) * loss_mean
         train_tqdm.set_description(f"Epoch [{_e+1}/{epochs}], loss_mean={loss_mean:.3f}")
-        
-st = model.state_dict()
+
+
+inf = Inference(path, 'model_gru_semantic.tar', model)
+print(inf.predict("Возьми телефон детка, я знаю ты хочешь позвонить мне сегодня"))
+'''st = model.state_dict()
 torch.save(st, 'model_gru_semantic.tar')
 
 Q = 0
@@ -155,4 +171,4 @@ with torch.no_grad():
         Q += torch.sum(p == y).item()
 
 Q /= len(test_d)
-print(Q)
+print(Q)'''
