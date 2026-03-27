@@ -1,6 +1,9 @@
 import os
 import json
 import re
+import nltk
+import emoji
+import inflect
 
 import torch
 import torch.utils.data as data
@@ -10,6 +13,7 @@ import torch.optim as optim
 from navec import Navec
 from tqdm import tqdm
 from torch.nn.utils.rnn import pad_sequence
+from nltk.corpus import stopwords
 
 class ReviewModel(nn.Module):
     def __init__(self, in_features, out_features):
@@ -28,6 +32,9 @@ class ReviewModel(nn.Module):
     
 class ReviewDataset(data.Dataset):
     def __init__(self, path, navec_embedded):
+        
+        nltk.download('stopwords')
+        
         self.navec_embedded = navec_embedded
         self.path = path
         with open(os.path.join(self.path, "format.json"), "r") as fp:
@@ -62,9 +69,32 @@ class ReviewDataset(data.Dataset):
         return torch.vstack(words_embedded), targ
         
     def _clear_text(self, input_text):
-        _txt = input_text.lower().replace('\ufeff', '').strip()
-        _txt = re.sub(r'[^А-яA-z- ]', '', _txt)
-        _words = _txt.split()
+        def emojis_words(text):
+            clean_text = emoji.demojize(text, delimiters=(" ", " "))
+            clean_text = clean_text.replace(":", "").replace("_", " ")
+            return clean_text
+        
+        clean_text = re.sub('<[^<]+?>', '', input_text) # Удаление HTML тегов
+        clean_text = re.sub(r'http\S+', '', clean_text) # Удаление URL и ссылок
+        clean_text = emojis_words(clean_text)           # Обрабатываем эмодзи
+        clean_text = clean_text.lower().replace('\ufeff', '').strip()
+        clean_text = re.sub('\s+', ' ', clean_text)
+        clean_text = re.sub(r'[^\w\s]', '', clean_text)
+        clean_text = re.sub(r'[^А-яA-z- ]', '', clean_text)
+        
+        temp = inflect.engine()
+        words = []
+        for word in clean_text.split():
+            if word.isdigit():
+                words.append(temp.number_to_words(word))
+            else:
+                words.append(word)
+        clean_text = ' '.join(words)
+        
+        
+        stop_words = set(stopwords.words('russian'))
+        _words = clean_text.split()
+        _words = [token for token in _words if token not in stop_words]
         _words = [w for w in _words if w in self.navec_embedded]
         return _words
         
@@ -82,9 +112,8 @@ navec = Navec.load(path)
 
 rd = ReviewDataset('archive/dataset', navec_embedded=navec)
 
-train_d, val_d, test_d = data.random_split(rd, [0.55, 0.25, 0.2])
+train_d, test_d = data.random_split(rd, [0.8, 0.2])
 train_data = data.DataLoader(train_d, batch_size=16, shuffle=True, drop_last=True, collate_fn=collate_fn)
-train_data_val = data.DataLoader(val_d, batch_size=16, shuffle=False, collate_fn=collate_fn)
 test_data = data.DataLoader(test_d, batch_size=8, shuffle=False, collate_fn=collate_fn)
 
 model = ReviewModel(300, 3)
@@ -93,7 +122,7 @@ model.cuda()
 optimizer = optim.Adam(params=model.parameters(), lr=0.001, weight_decay=0.001)
 loss_func = nn.CrossEntropyLoss()
 
-epochs = 0
+epochs = 52
 for _e in range(epochs):
     loss_mean = 0
     lm_count = 0
