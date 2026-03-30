@@ -13,3 +13,4 @@ final/tests/__pycache__
 pyproject.toml
 uv.lock
 .vscode/settings.json
+.vscode
