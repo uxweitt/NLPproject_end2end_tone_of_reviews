@@ -1,6 +1,6 @@
 import pytest
 
-from ml.model import SentimentPrediction, load_model
+from final.ml.model_app import SentimentPrediction, load_model
 
 
 @pytest.fixture(scope="function")

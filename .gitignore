@@ -9,3 +9,7 @@ final/.pytest_cache
 final/ml/__pycache__
 final/app/__pycache__
 final/tests/__pycache__
+.python-version
+pyproject.toml
+uv.lock
+.vscode/settings.json
