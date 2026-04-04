@@ -8,6 +8,7 @@ import nltk
 import emoji
 import inflect
 from tqdm import tqdm
+from sklearn.metrics import f1_score, accuracy_score
 
 import torch
 import torch.nn as nn
@@ -17,10 +18,10 @@ import torch.optim as optim
 from torch.nn.utils.rnn import pad_sequence
 
 class Inference:
-    def __init__(self, model, navec, path_model=None):
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.navec = navec
-        self.model = model.to(device)
+    def __init__(self, model, navec=None, path_model=None, path_navec=None):
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.navec = navec if path_navec is None else Navec.load(self.navec)
+        self.model = model.to(self.device)
         if path_model:
             self.model.load_state_dict(torch.load(path_model))
 
@@ -32,8 +33,8 @@ class Inference:
         _data = torch.stack(words)
         self.model.eval()
         with torch.no_grad():
-            logits = self.model(_data.unsqueeze(0).cuda()).squeeze(0)
-            probs = F.softmax(logits, dim=0).squeeze()
+            logits = self.model(_data.unsqueeze(0).to(self.device)).squeeze(0)
+            probs = F.softmax(logits, dim=-1).squeeze()
             pred_cl = torch.argmax(probs).item()
             confid = probs[pred_cl].item()
             dct = {
@@ -49,16 +50,16 @@ class Inference:
 class ReviewModel(nn.Module):
     def __init__(self, in_features, out_features):
         super().__init__()
-        self.hidden_size = 32
+        self.hidden_size = 64
         self.in_features = in_features
         self.out_features = out_features
         
-        self.gru1 = nn.GRU(self.in_features, self.hidden_size, batch_first=True)
-        self.layer = nn.Linear(self.hidden_size, self.out_features)
+        self.gru1 = nn.GRU(self.in_features, self.hidden_size, bidirectional=True, batch_first=True)
+        self.layer = nn.Linear(self.hidden_size * 2, self.out_features)
         
     def forward(self, x):
         x, h = self.gru1(x)
-        y = self.layer(h)
+        y = self.layer(x.mean(dim=1))
         return y
     
 class ReviewDataset(data.Dataset):
@@ -142,7 +143,7 @@ class ProcessModel:
         self.ds = ds
         self.model = model.to(self.device)
         self.path_model = path_model
-        self.optimizator = optim.Adam(params=self.model.parameters(), lr=0.05, weight_decay=0.001)
+        self.optimizator = optim.Adam(params=self.model.parameters(), lr=0.001, weight_decay=0.001)
         self.loss_func = nn.CrossEntropyLoss()
         self.epochs = epochs
         self.path_navec = path_navec
@@ -161,8 +162,10 @@ class ProcessModel:
             train_tqdm = tqdm(self.train_data, leave=True)
             self.model.train()
             for x_train, y_train in train_tqdm:
-                predict = self.model(x_train.cuda()).squeeze(0)
-                loss = self.loss_func(predict, y_train.cuda())
+                x_train = x_train.to(self.device)
+                y_train = y_train.to(self.device)
+                predict = self.model(x_train).squeeze(0)
+                loss = self.loss_func(predict, y_train)
                 self.optimizator.zero_grad()
                 loss.backward()
                 self.optimizator.step()
@@ -171,17 +174,25 @@ class ProcessModel:
                 train_tqdm.set_description(f"Epoch [{_e+1}/{self.epochs}], loss_mean={loss_mean:.3f}")
     
     def _test_loop(self):
-        Q = 0
         self.model.eval()
+        all_preds = []
+        all_targets = []
         with torch.no_grad():
             test_tqdm = tqdm(self.test_data, leave=True)
             for x_test, y_test in test_tqdm:
-                predict = self.model(x_test.cuda()).squeeze(0)
+                x_test = x_test.to(self.device)
+                y_test = y_test.to(self.device)
+                predict = self.model(x_test).squeeze(0)
                 p = torch.argmax(predict, dim=1)
-                y = torch.argmax(y_test.cuda(), dim=1)
-                Q += torch.sum(p == y).item()
-        self.quality = Q / len(self.d_test)
+                y = torch.argmax(y_test, dim=1)
+                all_preds.extend(p.cpu().tolist())
+                all_targets.extend(y.cpu().tolist())
+                
+        accuracy = accuracy_score(all_targets, all_preds)
+        f1_macro = f1_score(all_targets, all_preds, average='macro')
+        self.quality = accuracy 
+        self.f1_macro = f1_macro
         
     def _inference(self, text):
-        inf = Inference(self.model, self.navec)
+        inf = Inference(self.model, navec=self.navec)
         return inf.predict_text(text)

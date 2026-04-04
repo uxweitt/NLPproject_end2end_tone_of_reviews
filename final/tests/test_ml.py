@@ -10,9 +10,9 @@ def model():
 @pytest.mark.parametrize(
     "text, expected_label",
     [
-        ("бэд", "neg"),
-        ("гуд", "pos"),
-        ("нот бэд", "neu"),
+        ("Фильм полный отстой, конкретный ватафа", "neg"),
+        ("Фильм приятный, мне понравился!", "pos"),
+        ("Фильм уровня Данила Колбасенко и Кузи Лакомкина оказался неплох", "neu"),
     ],
 )
 def test_sentiment(model, text, expected_label):

@@ -16,10 +16,10 @@ class SentimentPrediction:
     score: float
 
 def load_model():
-    path_navec = BASE_DIR / 'navec_hudlit_v1_12B_500K_300d_100q.tar'
-    path_model = BASE_DIR / 'model_gru_semantic.tar'
+    path_navec = BASE_DIR / config['navec']
+    path_model = BASE_DIR / config['model']
     model = model_space.ReviewModel(300, 3)
-    inf = model_space.Inference(path_navec, path_model, model)
+    inf = model_space.Inference(model, navec=None, path_model=path_model, path_navec=path_navec)
     
     def predict(text):
         sentiment = inf.predict_text(text)
