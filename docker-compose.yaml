@@ -1,0 +1,9 @@
+version: '3.8'
+
+services:
+  api:
+    build: .
+    container_name: sentiment_app
+    ports:
+      - "8000:80"
+    restart: unless-stopped
