@@ -14,7 +14,8 @@ def main():
     'early_stopping': 25,
     'loss_f': nn.CrossEntropyLoss(),
     'optim': torch.optim.Adam,
-    'device': 'cuda'
+    'device': 'cuda',
+    'save_best': True
     }
     clf = Trainer(**params)
     clf.fit()

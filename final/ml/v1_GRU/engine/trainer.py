@@ -10,6 +10,7 @@ from data_set.data_set import ReviewDataset, collate_fn
 
 from tqdm import tqdm
 from sklearn.model_selection import train_test_split
+from pathlib import Path
 
 
 class Trainer():
@@ -25,6 +26,8 @@ class Trainer():
         optim: оптимизатор
         scheduler: регулятор градиентного шага
         permutate: перемешивание тренировочной выборки перед обучением
+        save_intermediate: сохранять ли чекпоинты модели во время обучения
+        save_best: сохранять ли лучшую модель
 
     Attributes:
         start_model: необученная модель
@@ -44,7 +47,8 @@ class Trainer():
                 max_batches_per_epoch=None,
                 device='cpu', early_stopping=10, 
                 optim=torch.optim.Adam, 
-                scheduler=None, permutate=True):
+                scheduler=None, permutate=True,
+                save_best=True, save_intermediate=False):
         
         self.loss_f = loss_f
         self.learning_rate = learning_rate
@@ -59,6 +63,8 @@ class Trainer():
         self.dataset = dataset
         self.start_model = net
         self.best_model = net
+        self.save_best = save_best
+        self.save_intermediate = save_intermediate
 
         self.train_loss = []
         self.val_loss = []
@@ -68,7 +74,6 @@ class Trainer():
 
     def fit(self):
         Net = self.start_model
-        device = torch.device(self.device)
         Net.to(self.device)
         optimizer = self.optim(Net.parameters(), lr=self.learning_rate)
         if self.scheduler is not None:
@@ -141,8 +146,23 @@ class Trainer():
                 self.best_model = Net
                 best_val_loss = mean_loss
                 best_ep = epoch
+                if self.save_intermediate:
+                    self.save_model(name_models=
+                    f"Epoch_{epoch+1}_loss_val_{best_val_loss:.3f}.pt"
+                    )
+                
             elif epoch - best_ep > self.early_stopping:
                 print(f'{self.early_stopping} без улучшений. Прекращаем обучение...')
                 break
             if self.scheduler is not None:
                 scheduler.step()
+                
+        if self.save_best:
+            self.save_model(name_models=f"best_loss_val_{best_val_loss:.3f}.pt")
+    
+    def save_model(self, save_dir = "models", name_models='best.pt'):
+        BASE_DIR = Path(__file__).resolve().parent.parent
+        SAVE_DIR = save_dir
+        torch.save(self.best_model.state_dict(),
+                    BASE_DIR / SAVE_DIR / name_models)
+        
