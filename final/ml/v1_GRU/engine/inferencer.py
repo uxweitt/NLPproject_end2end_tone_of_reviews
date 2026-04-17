@@ -1,4 +1,4 @@
-from utils.preprocessor import TextPreprocessor
+from final.ml.v1_GRU.utils.preprocessor import TextPreprocessor
 from torch.nn.utils.rnn import pad_sequence
 
 import torch

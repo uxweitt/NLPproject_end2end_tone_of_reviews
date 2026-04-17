@@ -8,14 +8,16 @@ model = None
 
 class  SentimentResponse(BaseModel):
     text: str
-    sentiment_label: str
-    sentiment_score: float
+    label: str
+    confidence: float
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global model
     model = load_model()
+    
     yield
+    
 app = FastAPI(lifespan=lifespan)
 
 @app.get("/")
@@ -27,7 +29,7 @@ def predict_sentiment(text):
     sentiment = model(text)
     response = SentimentResponse(
         text=text,
-        sentiment_label=sentiment.label,
-        sentiment_score=sentiment.score,
+        label=sentiment.label,
+        confidence=sentiment.confidence,
     )
     return response

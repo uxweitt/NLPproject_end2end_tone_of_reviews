@@ -1,3 +1,3 @@
 task: sentiment-analysis
-navec: 'navec_hudlit_v1_12B_500K_300d_100q.tar'
-model: 'model_gru_semantic.tar'
+navec: 'v1_GRU\data_set\navec_hudlit_v1_12B_500K_300d_100q.tar'
+model: 'v1_GRU\models\best_loss_val_0.139.pt'
