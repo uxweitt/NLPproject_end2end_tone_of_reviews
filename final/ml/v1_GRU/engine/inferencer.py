@@ -28,6 +28,7 @@ class Inferencer:
             "confidence": float(probs[0, pred_idx].item())
         }
     
+    @torch.inference_mode()
     def predict_batch(self, texts):
         batch = self._prepare_batch(texts)
         logits = self.model(batch)

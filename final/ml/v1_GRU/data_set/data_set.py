@@ -16,7 +16,6 @@ from utils.preprocessor import TextPreprocessor
 
 BASE_DIR = Path(__file__).resolve().parent
 NAVEC_DIR = "navec_hudlit_v1_12B_500K_300d_100q.tar"
-print(BASE_DIR / NAVEC_DIR)
 
 class ReviewDataset(data.Dataset):
     def __init__(self, data_dir, num_classes, preprocessor=TextPreprocessor):
@@ -32,7 +31,7 @@ class ReviewDataset(data.Dataset):
             
         for _dir_class, _target in self.format.items():
             path = os.path.join(self.data_dir, _dir_class)
-            list_files = os.listdir(path) # Можно взять [:15000] для баланса всех классов
+            list_files = os.listdir(path)[:150] # Можно взять [:15000] для баланса всех классов
             self.length += len(list_files)
             self.files.extend(
                         map(lambda _x: (os.path.join(path, _x), _target), 
