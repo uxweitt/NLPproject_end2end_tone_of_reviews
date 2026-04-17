@@ -19,13 +19,13 @@ NAVEC_DIR = "navec_hudlit_v1_12B_500K_300d_100q.tar"
 print(BASE_DIR / NAVEC_DIR)
 
 class ReviewDataset(data.Dataset):
-    def __init__(self, data_dir, num_classes):
+    def __init__(self, data_dir, num_classes, preprocessor=TextPreprocessor):
         self.data_dir = data_dir            
         self.length = 0
         self.files = [] # (path2txt, target)
         self.targets = torch.eye(num_classes)
         navec_path = BASE_DIR / NAVEC_DIR
-        self.TextPreprocessor = TextPreprocessor(navec_path)
+        self.preprocessor = preprocessor(navec_path)
         
         with open(os.path.join(self.data_dir, "format.json"), "r") as fp:
             self.format = json.load(fp)
@@ -44,8 +44,8 @@ class ReviewDataset(data.Dataset):
         emb_target = self.targets[target]
         with open(path_file, 'r', encoding='utf-8') as f:
             txt = f.read()
-            vectors = self.TextPreprocessor.encode_text(txt)
             
+        vectors = self.preprocessor.encode_text(txt)    
         return vectors, emb_target
     
     def __len__(self):
