@@ -7,6 +7,3 @@ predproccesing.ipynb
 dev
 final/.pytest_cache
 __pycache__/
-.python-version
-pyproject.toml
-uv.lock
